@@ -1,0 +1,153 @@
+
+# this file is intended to to test as much deployment functionality as possible
+
+pipe:
+  single: true
+  anything:
+  - one
+  - two
+
+default:
+  name: "helmet-deploy"
+  version: "2020-01-01-01"
+  image: "some.registry.example.com/helmspace/helmet-deploy:2020-01-01-01"
+  slug: ''
+  issuer:
+    production: production
+    staging: staging
+  ingress:
+    external: external
+    internal: internal
+  registries:
+  - registry-one
+  - registry-two
+  add:
+    logs:
+      json:
+        pkmio.com/json: "false"
+    metrics:
+      enable:
+        pkmio.com/scrape: "true"
+      disable:
+        pkmio.com/scrape: "false"
+    mesh:
+      enable:
+        pkmio.com/inject: enabled
+      disable:
+        pkmio.com/inject: disabled
+    dns:
+      enable:
+        pkmio.com/dns: enabled
+      disable:
+        pkmio.com/dns: disabled
+      global:
+        pkmio.com/global: failover
+
+add:
+  logs: json
+  metrics: enable
+  mesh: disable
+  dns: enable
+
+volumes:
+- name: data
+  path: /data
+  pvc:
+    class: pg1
+    size: 10Gi
+
+variables:
+- name: premade-secret-name
+  store: external
+- name: config
+  store: plaintext
+  data:
+    TEST_SECRET: "${TEST_SECRET}"
+- name: secret
+  data:
+    TEST_CONFIG: "${TEST_CONFIG}"
+
+containers:
+- name: app
+  entrypoint:
+    - "npm"
+  cmd: 
+  - "start"
+  ports:
+    - containerPort: 5050
+    - containerPort: 8080
+  cpu:
+    request: 100m
+    limit: 1000m
+  memory:
+    request: 100Mi
+    limit: 1Gi
+  probe:
+    path: /health
+    port: 8080
+  root: true
+
+annotations:
+  random: "value"
+
+nodes:
+  prohibit:
+    preemptive: 'true'
+
+strategy: Recreate
+
+svc:
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+  - name: metrics
+    port: 5050
+    targetPort: 5050
+
+remote:
+  postgres: postgres.example.com
+  redis: redis.example.com
+
+hpa:
+  min: 2
+  max: 3
+  cpu: 60
+  memory: 90
+
+conceal: false
+
+ingress:
+- name: public
+  internal: false
+  issuer: ""
+  urls:
+    - ingress.test.site
+    - ingress2.test.site
+- name: private
+  internal: true
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: 5000m
+  issuer: letsencrypt-staging
+  port: 3000
+  urls:
+    - internal.ingress.test.site
+- name: extra
+  cert: "a-differenct-cert-secret"
+  urls:
+    - extra.test.site
+
+rbac:
+- apiGroups:
+  - ""
+  - "extensions"
+  - "apps"
+  resources:
+  - "endpoints"
+  - "pods"
+  - "services"
+  - "namespaces"
+  verbs:
+  - "get"
+  - "list"
+  - "watch"

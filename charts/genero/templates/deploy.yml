@@ -1,0 +1,292 @@
+{{- $default := .Values.default -}}
+{{- $variables := .Values.variables -}}
+{{- $volumes := .Values.volumes -}}
+{{- $deploy := .Values.deploy | default dict }}
+{{- if and .Values.containers (not .Values.cronjobs) }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "name" $ }}
+  namespace: {{ include "ns" $ }}
+  labels:
+    app: {{ include "name" $ }}
+    version: {{ include "version" $ | quote }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ include "name" $ }}
+  minReadySeconds: {{ (dig "wait" 10 $deploy) }} 
+  strategy:
+    type: {{ dig "strategy" "RollingUpdate" $deploy }}
+    {{- if not (dig "strategy" "" $deploy) }}
+    rollingUpdate:
+      maxSurge: {{ dig "surge" "20%" $values.deploy }}
+      maxUnavailable: 0
+    {{- else if eq .Values.deploy.strategy "RollingUpdate" }}
+    rollingUpdate:
+      maxSurge: {{ dig "surge" "20%" $values.deploy }}
+      maxUnavailable: 0
+    {{- end }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "name" $ }}
+      annotations:
+        rollme: {{ randAlphaNum 8 | quote }}
+        {{- $add := .Values.add | default dict }}
+        {{- if $add.logs }}
+          {{- range $ak, $av := (index .Values.default.add.logs $add.logs) }}
+        {{ $ak }}: {{ $av | quote }}
+          {{- end -}}
+        {{- end }}
+        {{- if $add.metrics }}
+          {{- range $ak, $av := (index .Values.default.add.metrics $add.metrics) }}
+        {{ $ak }}: {{ $av | quote }}
+          {{- end -}}
+        {{- end }}
+        {{- if $add.mesh }}
+          {{- range $ak, $av := (index .Values.default.add.mesh $add.mesh) }}
+        {{ $ak }}: {{ $av | quote }}
+          {{- end -}}
+        {{- end }}
+        {{- if .Values.annotations }}
+          {{- toYaml .Values.annotations | nindent 8 }}
+        {{- end }}
+    spec:
+      shareProcessNamespace: {{ ternary "true" "false" (.Values.share | default false) }}
+      terminationGracePeriodSeconds: 85
+      serviceAccountName: {{ include "name" $ }}
+      restartPolicy: {{ .Values.restart | default "Always" }}
+      {{- if .Values.priority }}
+      priorityClassName: {{ .Values.priority }}
+      {{- end }}
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "1"
+          - name: attempts
+            value: "3"
+          - name: timeout
+            value: "3"
+      {{- if .Values.nodes }}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              {{- range $key, $value := .Values.nodes.prohibit }}
+              - key: {{ $key }}
+                operator: NotIn
+                values:
+                - {{ $value | quote }}
+              {{- end }}
+              {{- range $key, $value := .Values.nodes.force }}
+              - key: {{ $key | quote }}
+                operator: In
+                values:
+                - {{ $value | quote }}
+              {{- end }}
+      {{- end }}
+      {{- if .Values.init }}
+      initContainers:
+      {{- range .Values.init }}
+      - name: {{ .name }}
+        image: {{ .image | default $default.image }}
+        imagePullPolicy: {{ .policy | default "Always" }}
+        {{- if .ports }}
+        ports:
+          {{- toYaml .ports | nindent 8 }}
+        {{- end }}
+        {{- if .command }}
+        args:
+          {{- toYaml .command | nindent 8 }}
+        {{- else if .cmd }}
+        args:
+          {{- toYaml .cmd | nindent 8 }}
+        {{- end }}
+        {{- if .entrypoint }}
+        command:
+          {{- toYaml .entrypoint | nindent 8 }}
+        {{- else if .command }}
+        command:
+          - "/bin/sh"
+          - "-c"
+        {{- end }}
+        resources:
+          requests:
+            cpu: {{ dig "cpu" "request" "100m" . }}
+            memory: {{ dig "memory" "request" "128Mi" . }}
+          limits:
+            cpu: {{ dig "cpu" "limit" "1000m" . }}
+            memory: {{ dig "memory" "limit" "1Gi" . }}
+        securityContext:
+        {{- if .root }}
+          runAsUser: 0
+        {{- end }}
+          privileged: {{ ternary "true" "false" (.privileged | default false) }}
+        env:
+          - name: DD_AGENT_HOST
+            valueFrom:
+              fieldRef:
+                fieldPath: status.hostIP
+        {{- if $variables }}
+        envFrom:
+          {{- range $variables }}
+            {{- if eq (.store | default "") "plaintext" }}
+          - configMapRef:
+              name: {{ include "name" $ }}-{{ .name }}
+              optional: false
+            {{- else if eq (.store | default "") "external" }}
+          - secretRef:
+              name: {{ .name }}
+              optional: false
+            {{- else }}
+          - secretRef:
+              name: {{ include "name" $ }}-{{ .name }}
+              optional: false
+            {{- end }}
+          {{- end }}
+        {{- end }}
+      {{- end }}
+      {{- end }}
+      containers:
+      {{- range .Values.containers }}
+      - name: {{ .name }}
+        image: {{ .image | default $default.image }}
+        imagePullPolicy: {{ .policy | default "Always" }}
+        ports:
+        {{- if .ports }}
+          {{- toYaml .ports | nindent 8 }}
+        {{- else }}
+          - containerPort: 80
+        {{- end }}
+        {{- if .command }}
+        args:
+          {{- toYaml .command | nindent 8 }}
+        {{- else if .cmd }}
+        args:
+          {{- toYaml .cmd | nindent 8 }}
+        {{- end }}
+        {{- if .entrypoint }}
+        command:
+          {{- toYaml .entrypoint | nindent 8 }}
+        {{- else if .command }}
+        command:
+          - "/bin/sh"
+          - "-c"
+        {{- end }}
+        resources:
+          requests:
+            cpu: {{ dig "cpu" "request" "100m" . }}
+            memory: {{ dig "memory" "request" "128Mi" . }}
+          limits:
+            cpu: {{ dig "cpu" "limit" "1000m" . }}
+            memory: {{ dig "memory" "limit" "1Gi" . }}
+        {{- if not (eq (dig "probe" "path" "" .) "disable") }}
+        readinessProbe:
+          {{- if (dig "probe" "exec" "" .) }}
+          exec:
+            command:
+              {{- toYaml .probe.exec | nindent 12 }}
+          {{- else }}
+          httpGet:
+            path: {{ dig "probe" "path" "/health" . }}
+            port: {{ dig "probe" "port" 80 . }}
+          {{- end }}
+          initialDelaySeconds: {{ dig "probe" "delay" 30 . }}
+          periodSeconds: 30
+          failureThreshold: 4
+        livenessProbe:
+          {{- if (dig "probe" "exec" "" .) }}
+          exec:
+            command:
+              {{- toYaml .probe.exec | nindent 12 }}
+          {{- else }}
+          httpGet:
+            path: {{ dig "probe" "path" "/health" . }}
+            port: {{ dig "probe" "port" 80 . }}
+          {{- end }}
+          initialDelaySeconds: {{ dig "probe" "delay" 30 . }}
+          periodSeconds: 30
+          failureThreshold: 4
+        startupProbe:
+          {{- if (dig "probe" "exec" "" .) }}
+          exec:
+            command:
+              {{- toYaml .probe.exec | nindent 12 }}
+          {{- else }}
+          httpGet:
+            path: {{ dig "probe" "path" "/health" . }}
+            port: {{ dig "probe" "port" 80 . }}
+          {{- end }}
+          initialDelaySeconds: 10
+          failureThreshold: {{ dig "probe" "startup" 20 . }}
+          periodSeconds: 6
+        {{- end }}
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "sleep 20"]
+        securityContext:
+        {{- if .root }}
+          runAsUser: 0
+        {{- end }}
+          privileged: {{ ternary "true" "false" (.privileged | default false) }}
+        env:
+          - name: DD_AGENT_HOST
+            valueFrom:
+              fieldRef:
+                fieldPath: status.hostIP
+        {{- if or $variables }}
+        envFrom:
+          {{- range $variables }}
+            {{- if eq (.store | default "") "plaintext" }}
+          - configMapRef:
+              name: {{ include "name" $ }}-{{ .name }}
+              optional: false
+            {{- else if eq (.store | default "") "external" }}
+          - secretRef:
+              name: {{ .name }}
+              optional: false
+            {{- else }}
+          - secretRef:
+              name: {{ include "name" $ }}-{{ .name }}
+              optional: false
+            {{- end }}
+          {{- end }}
+        {{- end }}
+        {{- if $volumes }}
+        volumeMounts:
+          {{- range $volumes }}
+          - name: {{ .name }}
+            mountPath: {{ .path }}{{- if .file }}/{{ .file }}{{- end }}
+            {{- if .file }}
+            subPath: {{ .file }}
+            {{- end }}
+          {{- end }}
+        {{- end }}
+      {{- end }}
+      {{- if $volumes }}
+      volumes:
+        {{- range $volumes }}
+        {{- if and .pvc (not .data) }}
+        - name: {{ .name }}
+          persistentVolumeClaim:
+            claimName: {{ include "name" $ }}-{{ .name }}
+        {{- else if and .ev (not .data) }}
+        - name: {{ .name }}
+          emptyDir: {}
+        {{- else }}
+        - name: {{ .name }}
+          secret:
+            secretName: {{ include "name" $ }}-{{ .name }}
+        {{- end }}
+        {{- end }}
+      {{- end }}
+      {{- if hasKey $default "registries" }}
+      imagePullSecrets:
+      {{- range $default.registries }}
+      - name: {{ . }}
+      {{- end }}
+      {{- end }}
+{{- end }}

@@ -1,0 +1,116 @@
+
+# this file is intended to to test configuration that is not commonly used
+
+default:
+  name: "helmet-unusual"
+  version: "2"
+  image: "some.registry.example.com/helmspace/helmet:2"
+  slug: 'yoyo'
+  namespaced: false
+
+rbac:
+- apiGroups:
+  - ""
+  - "extensions"
+  - "apps"
+  resources:
+  - "endpoints"
+  - "pods"
+  - "services"
+  - "namespaces"
+  verbs:
+  - "get"
+  - "list"
+  - "watch"
+
+volumes:
+- name: cv
+  path: /app
+  file: .env
+  data:
+    .env: |
+      SERVER_PORT: 3000
+- name: data
+  path: /data
+  perpetual: "disable"
+  pvc:
+    class: pg1
+    size: 10Gi
+
+variables:
+- name: config
+  store: plaintext
+  data:
+    TEST_SECRET: "${TEST_SECRET}"
+- name: secret
+  data:
+    TEST_CONFIG: "${TEST_CONFIG}"
+
+containers:
+- name: helmet
+  command:
+  - "tail -f /dev/null"
+  ports:
+    - containerPort: 5000
+  cpu:
+    request: 100m
+    limit: 1000m
+  memory:
+    request: 100Mi
+    limit: 1Gi
+  probe:
+    exec:
+      - 'sleep'
+      - '1'
+    path: /health
+    port: 5000
+  root: true
+  privileged: true
+
+annotations:
+  random: "value"
+
+nodes:
+  force: 
+    status: 'private'
+
+mesh: false
+registry: false
+metrics: true
+strategy: Recreate
+logs: json
+anchor: true
+conceal: true
+
+ingress:
+- name: main
+  urls:
+    - unusual.test.site
+
+svc:
+  type: LoadBalancer
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: "unusual.operations.${CI_ENVIRONMENT_URL},unusual.${CI_ENVIRONMENT_URL}"
+    service.beta.kubernetes.io/aws-load-balancer-internal: "false"
+    service.beta.kubernetes.io/aws-load-balancer-backend-protocol: "tcp"
+    service.beta.kubernetes.io/aws-load-balancer-ssl-cert: "arn:aws:acm:us-west-2:111111111111:certificate/---"
+    service.beta.kubernetes.io/aws-load-balancer-ssl-ports: "https"
+
+ports:
+- name: https
+  port: 443
+  targetPort: 8080
+- name: vpn
+  port: 1194
+  targetPort: 1194
+
+hpa:
+  min: 2
+  max: 3
+  cpu: 90
+  memory: 60
+  annotations:
+    example.com/example: "some-value"
+
+pdb:
+  min: 1

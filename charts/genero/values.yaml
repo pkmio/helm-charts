@@ -1,0 +1,14 @@
+
+default:
+  slug: ''
+  issuer:
+    production: production
+    staging: staging
+  ingress:
+    external: external
+    internal: internal
+  add:
+    logs: {}
+    metrics: {}
+    mesh: {}
+    dns: {}

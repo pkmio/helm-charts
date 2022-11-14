@@ -1,0 +1,71 @@
+
+# this file is intended to to test as much cronjobs functionality as possible
+
+default:
+  name: "helmet-cj"
+  version: "2020"
+  image: "some.registry.example.com/helmspace/helmet:2020"
+  slug: ''
+
+name: helmet
+version: "2020"
+
+variables:
+- name: configuration
+  data:
+    TEST: data
+
+cronjobs:
+- name: cronone
+  schedule: "*/1 * * * *"
+  concurrency: "Replace"
+  retries: 2
+  suspend: true
+  timeout: 6000
+  entrypoint:
+    - npm
+  cmd:
+    - start
+  cpu:
+    request: 50m
+    limit: 100m
+  memory:
+    request: 64Mi
+    limit: 128Mi
+- name: crontwo
+  schedule: "* 15 * * *"
+  concurrency: "Forbid"
+  retries: 3
+  suspend: false
+  timeout: 12000
+  command:
+    - "npm test"
+
+priority: "mid"
+
+containers:
+- name: helmet
+  image: "some.registry.example.com/helmspace/helmet:2020" 
+  ports:
+    - containerPort: 5000
+  disableProbes: false
+  cpu:
+    limit: 1000m
+  memory:
+    request: 512Mi
+- name: side
+  cpu:
+    request: 111m
+  memory:
+    limit: 1Gi
+  disableProbes: true
+- name: third
+  command:
+  - "tail -f /dev/null"
+  cpu:
+    request: 111m
+  memory:
+    limit: 1Gi
+  disableProbes: true
+
+registry: true

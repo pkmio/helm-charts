@@ -1,0 +1,519 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "Genero Schema",
+  "description": "genero validation",
+  "required": [
+    "default"
+  ],
+  "properties": {
+    "pipe": {
+      "type": "object"
+    },
+    "default": {
+      "type": "object",
+      "required": [
+        "name",
+        "version",
+        "image"
+      ],
+      "properties": {
+        "name": {
+          "type": ["number", "string"],
+          "pattern": "[a-zA-Z0-9-]+"
+        },
+        "version": {
+          "type": ["number", "string"],
+          "pattern": "[a-zA-Z0-9-]+"
+        },
+        "image": {
+          "type": "string"
+        },
+        "slug": {
+          "type": ["number", "string"]
+        },
+        "issuer": {
+          "type": "object",
+          "properties": {
+            "production": {
+              "type": "string"
+            },
+            "staging": {
+              "type": "string"
+            }
+          }
+        },
+        "ingress": {
+          "type": "object",
+          "properties": {
+            "external": {
+              "type": "string"
+            },
+            "internal": {
+              "type": "string"
+            }
+          }
+        },
+        "registries": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "add": {
+          "type": "object",
+          "properties": {
+            "logs": {
+              "type": ["object", "null"]
+            },
+            "metrics": {
+              "type": ["object", "null"]
+            },
+            "mesh": {
+              "type": ["object", "null"]
+            },
+            "dns": {
+              "type": ["object", "null"]
+            }
+          }
+        }
+      }
+    },
+    "annotations": {
+      "type": "object"
+    },
+    "priority": {
+      "type": "string"
+    },
+    "restart": {
+      "type": "string"
+    },
+    "share": {
+      "type": "boolean"
+    },
+    "nodes": {
+      "type": "object",
+      "items": {
+        "type": "object",
+        "properties": {
+          "prohibit": {
+            "type": "object"
+          },
+          "force": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "add": {
+      "type": "object",
+      "items": {
+        "type": "object",
+        "properties": {
+          "logs": {
+            "type": "object"
+          },
+          "metrics": {
+            "type": "object"
+          },
+          "mesh": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "containers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "image": {
+            "type": "string"
+          },
+          "command": {
+            "type": "array",
+            "description": "https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#container-v1-core",
+            "items": {
+              "type": "string"
+            }
+          },
+          "entrypoint": {
+            "type": "array",
+            "description": "https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#container-v1-core",
+            "items": {
+              "type": "string"
+            }
+          },
+          "policy": {
+            "type": "string"
+          },
+          "ports": {
+            "type": "array",
+            "description": "https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#containerport-v1-core"
+          },
+          "cpu": {
+            "type": "object",
+            "properties": {
+              "request": {
+                "type": "string"
+              },
+              "limit": {
+                "type": "string"
+              }
+            }
+          },
+          "memory": {
+            "type": "object",
+            "properties": {
+              "request": {
+                "type": "string"
+              },
+              "limit": {
+                "type": "string"
+              }
+            }
+          },
+          "probe": {
+            "type": "object",
+            "properties": {
+              "exec": {
+                "type": "array"
+              },
+              "path": {
+                "type": "string"
+              },
+              "port": {
+                "type": "number"
+              },
+              "delay": {
+                "type": "number"
+              },
+              "startup": {
+                "type": "number"
+              }
+            }
+          },
+          "root": {
+            "type": "boolean"
+          },
+          "privileged": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "init": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "image": {
+            "type": "string"
+          },
+          "command": {
+            "type": "array",
+            "description": "https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#container-v1-core",
+            "items": {
+              "type": "string"
+            }
+          },
+          "entrypoint": {
+            "type": "array",
+            "description": "https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#container-v1-core",
+            "items": {
+              "type": "string"
+            }
+          },
+          "policy": {
+            "type": "string"
+          },
+          "ports": {
+            "type": "array",
+            "description": "https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#containerport-v1-core"
+          },
+          "cpu": {
+            "type": "object",
+            "properties": {
+              "request": {
+                "type": "string"
+              },
+              "limit": {
+                "type": "string"
+              }
+            }
+          },
+          "memory": {
+            "type": "object",
+            "properties": {
+              "request": {
+                "type": "string"
+              },
+              "limit": {
+                "type": "string"
+              }
+            }
+          },
+          "probe": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "port": {
+                "type": "number"
+              },
+              "delay": {
+                "type": "number"
+              },
+              "startup": {
+                "type": "number"
+              }
+            }
+          },
+          "root": {
+            "type": "boolean"
+          },
+          "privileged": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "deploy": {
+      "type": "object",
+      "properties": {
+        "wait": {
+          "type": "number"
+        },
+        "strategy": {
+          "type": "string",
+          "enum": ["RollingUpdate", "Recreate"]
+        }
+      }
+    },
+    "cronjobs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "schedule": {
+            "type": "string"
+          },
+          "concurrency": {
+            "type": "string",
+            "enum": ["Allow", "Forbid", "Replace"]
+          },
+          "suspend": {
+            "type": "boolean"
+          },
+          "retries": {
+            "type": "number",
+            "minimum": 1
+          },
+          "timeout": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "variables": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "store": {
+            "type": "string",
+            "enum": ["encrypted", "plaintext", "external"]
+          },
+          "data": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "volumes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "perpetual": {
+            "type": "string",
+            "enum": ["enable", "disable"]
+          },
+          "file": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object"
+          },
+          "ev": {
+            "type": "boolean"
+          },
+          "pvc": {
+            "type": "object",
+            "items": {
+              "properties": {
+                "size": {
+                  "type": "string"
+                },
+                "class": {
+                  "type": "string"
+                },
+                "access": {
+                  "type": "string",
+                  "description": "https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1"
+                },
+                "snapshot": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "hpa": {
+      "type": "object",
+      "properties": {
+        "min": {
+          "type": "number",
+          "minimum": 1
+        },
+        "max": {
+          "type": "number",
+          "minimum": 1
+        },
+        "scale": {
+          "type": "string",
+          "enum": ["%", "#"]
+        },
+        "cpu": {
+          "type": "number",
+          "minimum": 1
+        },
+        "memory": {
+          "type": "number",
+          "minimum": 1
+        },
+        "down": {
+          "type": "number"
+        }
+      }
+    },
+    "pdb": {
+      "type": "object",
+      "properties": {
+        "min": {
+          "type": "number",
+          "minimum": 0
+        },
+        "max": {
+          "type": "number"
+        }
+      }
+    },
+    "svc": {
+      "type": "object",
+      "items": {
+        "type": "object",
+        "properties": {
+          "ports": {
+            "type": "array",
+            "description": "https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#serviceport-v1-core"
+          },
+          "disable": {
+            "type": "boolean"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["NodePort", "LoadBalancer"]
+          },
+          "annotations": {
+            "type": "object"
+          },
+          "redirect": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "ingress": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "urls"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "urls": {
+            "type": "array"
+          },
+          "external": {
+            "type": "boolean"
+          },
+          "cert": {
+            "type": "string"
+          },
+          "issuer": {
+            "type": "string"
+          },
+          "port": {
+            "type": "number"
+          },
+          "path": {
+            "type": "string"
+          },
+          "annotations": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "rbac": {
+      "type": "array",
+      "items": {
+        "properties": {
+          "apiGroups": {
+            "type": "array"
+          },
+          "resources": {
+            "type": "array"
+          },
+          "verbs": {
+            "type": "array"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,41 @@
+
+{{- $slug := .Values.default.slug  -}}
+
+###########################################################################
+
+{{- if .Values.svc }}{{- if eq (.Values.svc.maintenance | default false) true }}
+
+The application has been deployed in Maintenance Mode!
+{{- end }}{{- end }}
+
+Name: {{ include "name" $ }}
+Namespace: {{ include "ns" $ }}
+Version: {{ include "version" $ }}
+
+Chart Version: {{ .Chart.Version }}
+
+Endpoints:
+{{- if .Values.ingress }}
+{{- range .Values.ingress }}
+{{- if (hasKey . "external") }}
+  {{- if eq .external true }}
+  Public:
+  {{- else }}
+  Private:
+  {{- end }}
+{{- else }}
+  Private:
+{{- end }}
+{{- range .urls }}
+    - {{ if $slug }}{{ printf "%s%s" $slug "-" }}{{ else }}{{ end }}{{ . }}
+{{- end }}
+{{- end }}
+{{- else }}
+...
+{{- end }}
+
+To view all resources, run the following command:
+
+  $ helm get manifest {{ .Release.Name }} -n {{ .Release.Namespace }} | kubectl get -f - ;
+
+###########################################################################

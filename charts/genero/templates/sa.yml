@@ -1,0 +1,11 @@
+{{- if or .Values.containers (or .Values.cronjobs .Values.function) }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "name" $ }}
+  namespace: {{ include "ns" $ }}
+{{- if not .Values.rbac }}
+automountServiceAccountToken: false
+{{- end }}
+---
+{{- end }}

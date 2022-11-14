@@ -1,0 +1,44 @@
+{{- range .Values.volumes }}
+{{ if .data }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "name" $ }}-{{ .name }}
+  namespace: {{ include "ns" $ }}
+type: Opaque
+stringData:
+  {{- toYaml .data | nindent 2 }}
+---
+{{- else if .pvc }}
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: {{ include "name" $ }}-{{ .name }}
+  namespace: {{ include "ns" $ }}
+  annotations:
+    {{- if eq (.perpetual | default "enable") "enable" }}
+    "helm.sh/resource-policy": keep
+    {{- end }}
+spec:
+  {{- if .pvc.class }}
+  storageClassName: {{ .pvc.class }}
+  {{- end }}
+  {{- if .pvc.snapshot }}
+  dataSource:
+    name: {{ .pvc.snapshot }}
+    kind: VolumeSnapshot
+    apiGroup: snapshot.storage.k8s.io
+  {{- end }}
+  {{- if .pvc.access }}
+  accessModes:
+  {{ toYaml .pvc.access }}
+  {{- else }}
+  accessModes:
+    - ReadWriteOnce
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .pvc.size | default "1Gi" }}
+---
+{{- end }}
+{{- end }}

@@ -1,0 +1,28 @@
+
+name: release
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - name: Configure Git
+      run: |
+        git config user.name "pkmio-bot"
+        git config user.email "118141635+pkmio-bot@users.noreply.github.com"
+    - name: Install Helm
+      uses: azure/setup-helm@v1
+      with:
+        version: v3.6.2
+    - name: Run chart-releaser
+      uses: helm/chart-releaser-action@v1.2.1
+      env:
+        CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"

@@ -1,0 +1,43 @@
+
+# this file is intended to test what defaults are created when very little is defined
+
+default:
+  name: "helmet-default"
+  version: "master"
+  image: "some.registry.test.site/helmspace/helmet-default:master"
+  slug: ''
+
+volumes:
+- name: cv
+  path: /app
+  file: .env
+  data:
+    .env: |
+      SERVER_PORT: 3000
+
+variables:
+- name: config
+  data:
+    TEST_SECRET: "${TEST_SECRET}"
+- name: secret
+  data:
+    TEST_CONFIG: "${TEST_CONFIG}"
+
+containers:
+- name: app
+  ports:
+    - containerPort: 5000
+
+annotations:
+  random: "value"
+
+nodes:
+  force:
+    preemptive: 'true'
+
+ingress:
+- name: app
+  annotations:
+    gateway: enabled
+  urls:
+    - deploy.test.site

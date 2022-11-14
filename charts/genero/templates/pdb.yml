@@ -1,0 +1,21 @@
+{{- $pdb := .Values.pdb | default dict }}
+{{- $hpa := .Values.hpa | default dict }}
+{{- if and .Values.containers (and (not .Values.cronjobs) (not .Values.function)) }}
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "name" $ }}
+  namespace: {{ include "ns" $ }}
+  annotations:
+    "helm.sh/hook": post-upgrade, post-install
+    "helm.sh/hook-delete-policy": "before-hook-creation"
+spec:
+  selector:
+    matchLabels:
+      app: {{ include "name" $ }}
+  {{- if not (dig "max" "" $pdb) }}
+  minAvailable: {{ (dig "min" (sub (dig "min" 1 $hpa) 1) $pdb) }}
+  {{- else }}
+  maxUnavailable: {{ $pdb.max }}
+  {{- end }}
+{{- end }}

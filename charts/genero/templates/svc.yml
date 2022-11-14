@@ -1,0 +1,44 @@
+{{- $svc := .Values.svc | default dict }}
+{{- if and .Values.containers (and (not .Values.cronjobs) (not .Values.function)) }}
+{{- if not (dig "disable" "" $svc) }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "name" $ }}
+  namespace: {{ include "ns" $ }}
+  labels:
+    app: {{ include "name" $ }}
+    service: {{ include "name" $ }}
+  {{- if (dig "annotations" "" $svc) }}
+  annotations:
+    {{- toYaml .Values.svc.annotations | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if (dig "redirect" "" $svc) }} 
+  type: ExternalName
+  clusterIP:
+  externalName: {{ .Values.svc.redirect }}
+  {{- else if (dig "type" "" $svc) }}
+  type: {{ .Values.svc.type }}
+  selector:
+    app: {{ include "name" $ }}
+  {{- else }}
+  selector:
+    app: {{ include "name" $ }}
+  {{- end }}
+  ports:
+  {{- if (dig "redirect" "" $svc) }} 
+    - port: 80
+      targetPort: 80
+      name: http
+  {{- else if (dig "ports" "" $svc) }}
+    {{- toYaml .Values.svc.ports | nindent 2 }}
+  {{- else }}
+    - port: 80
+      targetPort: {{ dig "containerPort" 80 ( index ( dig "ports" (list dict) (index .Values.containers 0) ) 0 ) }}
+      name: http
+      appProtocol: http
+  {{- end }}
+{{- end }}
+{{- end }}
+---

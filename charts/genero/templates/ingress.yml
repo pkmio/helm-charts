@@ -1,0 +1,64 @@
+{{- $d := .Values.default }}
+{{- $add := .Values.add | default dict }}
+{{- if and .Values.ingress (not .Values.conceal) }}
+{{- range .Values.ingress }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "name" $ }}-{{ .name }}
+  namespace: {{ include "ns" $ }}
+  annotations:
+    nginx.org/websocket-services: {{ include "name" $ }}
+    {{- if $add.dns }}
+      {{- range $ak, $av := (index $d.add.dns $add.dns) }}
+    {{ $ak }}: {{ $av | quote }}
+      {{- end -}}
+    {{- end }}
+    {{- if .annotations }}
+      {{- toYaml .annotations | nindent 4 }}
+    {{- end }}
+spec:
+  ingressClassName: {{ if (hasKey . "external") }}{{ if eq .external true }}{{ $d.ingress.external }}{{ else }}{{ $d.ingress.internal }}{{ end }}{{ else }}{{ $d.ingress.internal }}{{ end }}
+  rules:
+  {{- $port := .port  -}}
+  {{- $path := .path  -}}
+  {{- range .urls }}
+  - host: {{ if . }}{{ if $d.slug }}{{ printf "%s%s" $d.slug "-" }}{{ else }}{{ end }}{{ . }}{{ end }}
+    http:
+      paths:
+      - path: {{ $path | default "/" }}
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "name" $ }}
+            port: 
+              number: {{ $port | default "80" }}
+  {{- end }}
+  tls:
+  - hosts:
+    {{- range .urls }}
+    - {{ if . }}{{ if $d.slug }}{{ printf "%s%s" $d.slug "-" }}{{ else }}{{ end }}{{ . }}{{ end }}
+    {{- end }}
+    secretName: {{ if not .cert }}{{ include "name" $ }}-{{ .name }}-cert{{ else }}{{ .cert }}{{ end }}
+---
+{{ if not .cert }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "name" $ }}-{{ .name }}-cert
+  namespace: {{ include "ns" $ }}
+spec:
+  secretName: {{ include "name" $ }}-{{ .name }}-cert
+  duration: 8760h # 365d
+  renewBefore: 720h # 30d
+  issuerRef:
+    name: {{ if .issuer }}{{ .issuer }}{{ else if $d.slug }}{{ $d.issuer.staging }}{{ else }}{{ $d.issuer.production }}{{ end }}
+    kind: ClusterIssuer
+  dnsNames:
+  {{- range .urls }}
+  - {{ if . }}{{ if $d.slug }}{{ printf "%s%s" $d.slug "-" }}{{ else }}{{ end }}{{ . }}{{ end }}
+  {{- end }}
+---
+{{- end }}
+{{- end }}
+{{- end }}

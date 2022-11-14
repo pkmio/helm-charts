@@ -1,0 +1,233 @@
+{{- $image := .Values.default.image -}}
+{{- $v := .Values -}}
+{{- if and .Values.cronjobs (not .Values.function) }}
+{{- range $ci, $cj := .Values.cronjobs }}
+{{- $restart := $cj.restart | default $v.restart }}
+{{- $priority := $cj.priority | default $v.priority }}
+{{- $nodes := $cj.nodes | default $v.nodes }}
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: {{ include "name" $ }}-{{ $cj.name }}
+  namespace: {{ include "ns" $ }}
+  labels:
+    version: {{ include "version" $ | quote }}
+spec:
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  concurrencyPolicy: {{ $cj.concurrency | default "Allow" }}
+  schedule: "{{ $cj.schedule }}"
+  suspend: {{ if $cj.suspend }}{{ "true" }}{{ else }}{{ "false" }}{{ end }}
+  jobTemplate:
+    spec:
+      {{- if $cj.timeout }}
+      activeDeadlineSeconds: {{ $cj.timeout }}
+      {{- end }}
+      backoffLimit: {{ $cj.retries | default 3 }}
+      template:
+        metadata:
+          labels:
+            app: {{ include "name" $ }}
+          annotations:
+            {{- $add := (coalesce $cj.add $v.add) | default dict }}
+            {{- if $add.logs }}
+              {{- range $ak, $av := (index $v.default.add.logs $add.logs) }}
+            {{ $ak }}: {{ $av | quote }}
+              {{- end -}}
+            {{- end }}
+            {{- if $add.metrics }}
+              {{- range $ak, $av := (index $v.default.add.metrics $add.metrics) }}
+            {{ $ak }}: {{ $av | quote }}
+              {{- end -}}
+            {{- end }}
+            {{- if $add.mesh }}
+              {{- range $ak, $av := (index $v.default.add.mesh $add.mesh) }}
+            {{ $ak }}: {{ $av | quote }}
+              {{- end -}}
+            {{- end }}
+            {{- if (coalesce $cj.annotations $v.annotations) }}
+              {{- toYaml (coalesce $cj.annotations $v.annotations) | nindent 12 }}
+            {{- end }}
+        spec:
+          shareProcessNamespace: {{ ternary "true" "false" ($v.share | default false) }}
+          serviceAccountName: {{ include "name" $ }}
+          restartPolicy: {{ if (coalesce $cj.restart $v.restart) }}{{ (coalesce $cj.restart $v.restart) }}{{ else }}"Never"{{ end }}
+          {{- if (coalesce $cj.priority $v.priority) }}
+          priorityClassName: {{ (coalesce $cj.priority $v.priority) }}
+          {{- end }}
+          {{- if (coalesce $cj.nodes $v.nodes) }}
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                - matchExpressions:
+                  {{- range $key, $value := (coalesce $cj.nodes $v.nodes).prohibit }}
+                  - key: {{ $key }}
+                    operator: NotIn
+                    values:
+                    - {{ $value | quote }}
+                  {{- end }}
+                  {{- range $key, $value := (coalesce $cj.nodes $v.nodes).force }}
+                  - key: {{ $key | quote }}
+                    operator: In
+                    values:
+                    - {{ $value | quote }}
+                  {{- end }}
+          {{- end }}
+          containers:
+          {{- range $index, $cntr := $v.containers }}
+          - name: {{ $cntr.name }}
+            image: {{ $cntr.image | default $image }}
+            imagePullPolicy: {{ $cntr.policy | default "Always" }}
+            ports:
+            {{- if $cntr.ports }}
+              {{- toYaml $cntr.ports | nindent 14 }}
+            {{- else }}
+              - containerPort: 80
+            {{- end }}
+            {{- if and (eq $index 0) $cj.entrypoint }}
+            command:
+              {{- toYaml $cj.entrypoint | nindent 14 }}
+            {{- else if and (eq $index 0) $cj.command }}
+            command:
+              - "/bin/sh"
+              - "-c"
+            {{- else if $cntr.entrypoint }}
+            command:
+              {{- toYaml $cntr.entrypoint | nindent 14 }}
+            {{- else if $cntr.command }}
+            command:
+              - "/bin/sh"
+              - "-c"
+            {{- end }}
+            {{- if and (eq $index 0) $cj.command }}
+            args:
+              {{- toYaml $cj.command | nindent 14 }}
+            {{- else if and (eq $index 0) $cj.cmd }}
+            args:
+              {{- toYaml $cj.cmd | nindent 14 }}
+            {{- else if $cntr.command }}
+            args:
+              {{- toYaml $cntr.command | nindent 14 }}
+            {{- end }}
+            resources:
+              {{- $cjc := ternary $cj.cpu dict (hasKey $cj "cpu") }}
+              {{- $cnc := ternary $cntr.cpu dict (hasKey $cntr "cpu") }}
+              {{- $cjm := ternary $cj.memory dict (hasKey $cj "memory") }}
+              {{- $cnm := ternary $cntr.memory dict (hasKey $cntr "memory") }}
+              requests:
+              {{- if (eq $index 0) }}
+                cpu: {{ coalesce ($cjc.request | default "") ($cnc.request | default "") "100m" }}
+              {{- else }}
+                cpu: {{ coalesce ($cnc.request | default "") "100m" }}
+              {{- end }}
+              {{- if (eq $index 0) }}
+                memory: {{ coalesce ($cjm.request | default "") ($cnm.request | default "") "128Mi" }}
+              {{- else }}
+                memory: {{ coalesce ($cnm.request | default "") "128Mi" }}
+              {{- end }}
+              limits:
+                {{- if (eq $index 0) }}
+                  cpu: {{ coalesce ($cjc.limit | default "") ($cnc.limit | default "") "1000m" }}
+                {{- else }}
+                  cpu: {{ coalesce ($cnc.limit | default "") "1000m" }}
+                {{- end }}
+                {{- if (eq $index 0) }}
+                  memory: {{ coalesce ($cjm.limit | default "") ($cnm.limit | default "") "1Gi" }}
+                {{- else }}
+                  memory: {{ coalesce ($cnm.limit | default "") "1Gi" }}
+                {{- end }}
+            {{- if $cntr.probe }}{{ if eq $cntr.probe.path "disable" }}{{- end }}
+            {{- else }}
+            readinessProbe:
+              {{- if (dig "probe" "exec" "" $cntr) }}
+              exec:
+                command:
+                  {{- toYaml .probe.exec | nindent 16 }}
+              {{- else }}
+              httpGet:
+                path: {{ dig "probe" "path" "/health" $cntr }}
+                port: {{ dig "probe" "port" 80 $cntr }}
+              {{- end }}
+              initialDelaySeconds: 10
+              periodSeconds: 30
+              failureThreshold: 4
+            livenessProbe:
+              {{- if (dig "probe" "exec" "" $cntr) }}
+              exec:
+                command:
+                  {{- toYaml .probe.exec | nindent 16 }}
+              {{- else }}
+              httpGet:
+                path: {{ dig "probe" "path" "/health" $cntr }}
+                port: {{ dig "probe" "port" 80 $cntr }}
+              {{- end }}
+              initialDelaySeconds: 10
+              periodSeconds: 30
+              failureThreshold: 4
+            {{- end }}
+            securityContext:
+            {{- if .root }}
+              runAsUser: 0
+            {{- end }}
+              privileged: {{ if $cntr.privileged }}{{ "true" }}{{ else }}{{ "false "}}{{ end }}
+            env:
+              - name: DD_AGENT_HOST
+                valueFrom:
+                  fieldRef:
+                    fieldPath: status.hostIP
+            {{- if $v.variables }}
+            envFrom:
+              {{- range $v.variables }}
+                {{- if eq (.store | default "") "plaintext" }}
+              - configMapRef:
+                  name: {{ include "name" $ }}-{{ .name }}
+                  optional: false
+                {{- else if eq (.store | default "") "external" }}
+              - secretRef:
+                  name: {{ .name }}
+                  optional: false
+                {{- else }}
+              - secretRef:
+                  name: {{ include "name" $ }}-{{ .name }}
+                  optional: false
+                {{- end }}
+              {{- end }}
+            {{- end }}
+            {{- if $v.volumes }}
+            volumeMounts:
+              {{- range $v.volumes }}
+              - name: {{ .name }}
+                mountPath: {{ .path }}{{- if .file }}/{{ .file }}{{- end }}
+                {{- if .file }}
+                subPath: {{ .file }}
+                {{- end }}
+              {{- end }}
+            {{- end }}
+          {{- end }}
+          {{- if $v.volumes }}
+          volumes:
+            {{- range $v.volumes }}
+            {{- if and .pvc (not .data) }}
+            - name: {{ .name }}
+              persistentVolumeClaim:
+                claimName: {{ include "name" $ }}-{{ .name }}
+            {{- else if and .ev (not .data) }}
+            - name: {{ .name }}
+              emptyDir: {}
+            {{- else }}
+            - name: {{ .name }}
+              secret:
+                secretName: {{ include "name" $ }}-{{ .name }}
+            {{- end }}
+            {{- end }}
+          {{- end }}
+          {{- if $v.default.registries }}
+          imagePullSecrets:
+          {{- range $v.default.registries }}
+          - name: {{ . }}
+          {{- end }}
+          {{- end }}
+---
+{{- end }}
+{{- end }}

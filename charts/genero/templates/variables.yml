@@ -1,0 +1,23 @@
+{{- range .Values.variables }}
+{{- if eq (.store | default "") "plaintext" }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "name" $ }}-{{ .name }}
+  namespace: {{ include "ns" $ }}
+data:
+  {{- toYaml .data | nindent 2 }}
+---
+{{- else if eq (.store | default "") "external" }}
+{{- else }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "name" $ }}-{{ .name }}
+  namespace: {{ include "ns" $ }}
+type: Opaque
+stringData:
+  {{- toYaml .data | nindent 2 }}
+---
+{{- end }}
+{{- end }}
