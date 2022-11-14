@@ -1,0 +1,28 @@
+{{- $f := .Values.function }}
+{{- if and $f (not .Values.cronjobs) }}
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{ include "name" $ }}
+  namespace: {{ include "ns" $ }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "name" $ }}
+  minReplicaCount: {{ $f.min | default 0 }}
+  maxReplicaCount: {{ $f.max | default 10 }}
+  cooldownPeriod:  {{ $f.cool | default 300 }}
+  pollingInterval: {{ $f.poll | default 5 }}
+  advanced:
+    restoreToOriginalReplicaCount: false
+  triggers:
+  {{- range $f.triggers }}
+  - type: {{ .type }}
+    metadata:
+      {{- toYaml .metadata | nindent 6 }}
+    authenticationRef:
+      name: {{ include "name" $ }}-{{ .auth.name }}
+  {{- end }}
+---
+{{- end }}
