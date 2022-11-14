@@ -1,0 +1,16 @@
+{{- if and .Values.containers (and (not .Values.cronjobs) (not .Values.function)) }}
+{{ if .Capabilities.APIVersions.Has "autoscaling.k8s.io/v1beta2/VerticalPodAutoscaler" -}}
+apiVersion: autoscaling.k8s.io/v1beta2
+kind: VerticalPodAutoscaler
+metadata:
+  name: {{ include "name" $ }}
+  namespace: {{ include "ns" $ }}
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "name" $ }}
+  updatePolicy:
+    updateMode: "Off"
+{{- end }}
+{{- end }}
