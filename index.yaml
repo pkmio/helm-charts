@@ -2,6 +2,20 @@ apiVersion: v1
 entries:
   genero:
   - apiVersion: v2
+    appVersion: v1.0.2
+    created: "2022-11-17T22:44:48.004006354Z"
+    description: Genero, a generic best practice ci/cd helm chart
+    digest: fa9062e6df73b316e8b8c549d06c6efd70f5ef6695da8e25d04e54a04ac403a2
+    home: https://pkmio.com
+    keywords:
+    - generic best practice ci/cd helm chart
+    name: genero
+    sources:
+    - https://github.com/pkmio/helm-charts
+    urls:
+    - https://github.com/pkmio/helm-charts/releases/download/genero-v1.0.2/genero-v1.0.2.tgz
+    version: v1.0.2
+  - apiVersion: v2
     appVersion: v1.0.1
     created: "2022-11-17T22:40:51.435095444Z"
     description: Genero, a generic best practice ci/cd helm chart
@@ -29,4 +43,4 @@ entries:
     urls:
     - https://github.com/pkmio/helm-charts/releases/download/genero-v1.0.0/genero-v1.0.0.tgz
     version: v1.0.0
-generated: "2022-11-17T22:40:51.435103244Z"
+generated: "2022-11-17T22:44:48.004026955Z"
