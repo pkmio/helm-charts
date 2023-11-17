@@ -1,7 +1,7 @@
 {{- $pdb := .Values.pdb | default dict }}
 {{- $hpa := .Values.hpa | default dict }}
 {{- if and .Values.containers (and (not .Values.cronjobs) (not .Values.function)) }}
-apiVersion: policy/v1beta1
+apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
   name: {{ include "name" $ }}

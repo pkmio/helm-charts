@@ -1,0 +1,10 @@
+
+release:
+  initiate:
+    - update version in Charts.yaml
+    - merge to master
+  process:        
+    - github action detects changes to Charts.yaml
+  result:    
+    - helm chart is deployed to github page on gh-pages branch
+

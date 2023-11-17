@@ -5,7 +5,7 @@
 {{- $restart := $cj.restart | default $v.restart }}
 {{- $priority := $cj.priority | default $v.priority }}
 {{- $nodes := $cj.nodes | default $v.nodes }}
-apiVersion: batch/v1beta1
+apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: {{ include "name" $ }}-{{ $cj.name }}

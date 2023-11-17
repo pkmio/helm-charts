@@ -1,6 +1,6 @@
 {{- if and .Values.containers (and (not .Values.cronjobs) (not .Values.function)) }}
 {{- $hpa := .Values.hpa | default dict }}
-apiVersion: autoscaling/v2beta2
+apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: {{ include "name" $ }}
